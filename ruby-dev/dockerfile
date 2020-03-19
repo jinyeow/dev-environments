@@ -1,0 +1,28 @@
+FROM mcr.microsoft.com/windows:1903
+
+ENV APPDIR c:\\app
+
+RUN cd C:\ && powershell -Command \
+	$ErrorActionPreference = 'Stop'; \
+	Invoke-WebRequest -UseBasicParsing -Method Get -Uri https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-2.7.0-1/rubyinstaller-2.7.0-1-x64.exe -OutFile c:\rubyinstaller-2.7.0-1-x64.exe; \
+	Start-Process c:\rubyinstaller-2.7.0-1-x64.exe -ArgumentList '/verysilent' -Wait; \
+	Remove-Item c:\rubyinstaller-2.7.0-1-x64.exe -Force;
+RUN powershell -ep Bypass -command $env:chocolateyUseWindowsCompression = 'false'; \
+    "iwr https://chocolatey.org/install.ps1 -UseBasicParsing | iex";
+RUN SET PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin;C:\Ruby27-x64\bin
+RUN choco install 7zip -y
+RUN choco install vim -y
+
+RUN mkdir %APPDIR%
+WORKDIR /app
+
+COPY Gemfile* /app/
+RUN C:\Ruby27-x64\bin\gem install bundler --no-document
+RUN C:\Ruby27-x64\bin\bundle install --without development test
+
+COPY _vimrc /app/
+RUN powershell -Command Copy-Item c:\\app\_vimrc -Destination "%userprofile%\_vimrc"
+
+COPY . /app
+
+CMD [ "cmd" ]
